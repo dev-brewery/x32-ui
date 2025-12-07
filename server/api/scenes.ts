@@ -4,8 +4,34 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { createSceneStorageManager } from '../storage/file-manager.js';
 import { x32Connection } from '../x32/connection.js';
+
+// Input validation schemas
+// Scene IDs must match format: x32-{number} or local-{alphanumeric name}
+const sceneIdSchema = z.string()
+  .min(1)
+  .max(256)
+  .regex(/^(x32-\d+|local-[a-zA-Z0-9_-]+|\d+)$/, {
+    message: 'Scene ID must be in format: x32-{number}, local-{name}, or numeric index',
+  });
+
+const createSceneSchema = z.object({
+  name: z.string().min(1).max(32).trim(),
+  notes: z.string().max(200).optional().default(''),
+  copyFromId: z.string()
+    .max(256)
+    .regex(/^(x32-\d+|local-[a-zA-Z0-9_-]+|\d+)$/, {
+      message: 'copyFromId must be in format: x32-{number}, local-{name}, or numeric index',
+    })
+    .optional(),
+});
+
+const updateSceneSchema = z.object({
+  name: z.string().min(1).max(32).trim().optional(),
+  notes: z.string().max(200).optional(),
+});
 
 const router = Router();
 
@@ -52,7 +78,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
  */
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const scene = await storageManager.getScene(req.params.id);
+    const sceneId = sceneIdSchema.parse(req.params.id);
+    const scene = await storageManager.getScene(sceneId);
 
     if (!scene) {
       res.status(404).json({
@@ -67,6 +94,10 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       data: scene,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Invalid scene ID' });
+      return;
+    }
     console.error('[API] Error getting scene:', error);
     res.status(500).json({
       success: false,
@@ -81,32 +112,28 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
  */
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, notes, copyFromId } = req.body;
-
-    if (!name || typeof name !== 'string') {
-      res.status(400).json({
-        success: false,
-        error: 'Scene name is required',
-      });
-      return;
-    }
+    const { name, notes, copyFromId } = createSceneSchema.parse(req.body);
 
     // If copying from another scene, get its content first
-    let sourceNotes = notes;
+    let sourceNotes: string = notes;
     if (copyFromId) {
       const sourceScene = await storageManager.getScene(copyFromId);
       if (sourceScene && !notes) {
-        sourceNotes = sourceScene.notes;
+        sourceNotes = sourceScene.notes || '';
       }
     }
 
-    const scene = await storageManager.saveScene(name.trim(), sourceNotes);
+    const scene = await storageManager.saveScene(name, sourceNotes);
 
     res.status(201).json({
       success: true,
       data: scene,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Invalid input', details: error.issues });
+      return;
+    }
     console.error('[API] Error creating scene:', error);
     res.status(500).json({
       success: false,
@@ -121,8 +148,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
  */
 router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, notes } = req.body;
-    const sceneId = req.params.id;
+    const sceneId = sceneIdSchema.parse(req.params.id);
+    const { name, notes } = updateSceneSchema.parse(req.body);
 
     const existingScene = await storageManager.getScene(sceneId);
     if (!existingScene) {
@@ -154,6 +181,10 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
       data: updatedScene,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Invalid input', details: error.issues });
+      return;
+    }
     console.error('[API] Error updating scene:', error);
     res.status(500).json({
       success: false,
@@ -168,7 +199,8 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
  */
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
-    const deleted = await storageManager.deleteScene(req.params.id);
+    const sceneId = sceneIdSchema.parse(req.params.id);
+    const deleted = await storageManager.deleteScene(sceneId);
 
     if (!deleted) {
       res.status(404).json({
@@ -183,6 +215,10 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
       data: { deleted: true },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Invalid scene ID' });
+      return;
+    }
     console.error('[API] Error deleting scene:', error);
     res.status(500).json({
       success: false,
@@ -197,7 +233,8 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
  */
 router.post('/:id/load', async (req: Request, res: Response): Promise<void> => {
   try {
-    const loaded = await storageManager.loadScene(req.params.id);
+    const sceneId = sceneIdSchema.parse(req.params.id);
+    const loaded = await storageManager.loadScene(sceneId);
 
     if (!loaded) {
       res.status(400).json({
@@ -212,6 +249,10 @@ router.post('/:id/load', async (req: Request, res: Response): Promise<void> => {
       data: { loaded: true },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Invalid scene ID' });
+      return;
+    }
     console.error('[API] Error loading scene:', error);
     res.status(500).json({
       success: false,
@@ -226,7 +267,8 @@ router.post('/:id/load', async (req: Request, res: Response): Promise<void> => {
  */
 router.post('/:id/backup', async (req: Request, res: Response): Promise<void> => {
   try {
-    const backed = await storageManager.backupScene(req.params.id);
+    const sceneId = sceneIdSchema.parse(req.params.id);
+    const backed = await storageManager.backupScene(sceneId);
 
     if (!backed) {
       res.status(404).json({
@@ -241,6 +283,10 @@ router.post('/:id/backup', async (req: Request, res: Response): Promise<void> =>
       data: { backed: true },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Invalid scene ID' });
+      return;
+    }
     console.error('[API] Error backing up scene:', error);
     res.status(500).json({
       success: false,

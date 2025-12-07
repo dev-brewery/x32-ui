@@ -1,14 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useScenes } from './useScenes';
+import {
+  setupFetchFallback,
+  teardownFetchFallback,
+  resetMockState,
+  getCurrentFetchMode,
+} from '../test/fetch-fallback';
 
 describe('useScenes', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    resetMockState();
+    setupFetchFallback();
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    teardownFetchFallback();
   });
 
   describe('Initialization', () => {
@@ -21,27 +28,27 @@ describe('useScenes', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('loads mock scenes after initialization', async () => {
+    it('loads scenes after initialization', async () => {
       const { result } = renderHook(() => useScenes());
 
       expect(result.current.isLoading).toBe(true);
 
-      // Advance timers to complete the mock fetch (500ms delay)
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.isLoading).toBe(false);
       expect(result.current.scenes.length).toBeGreaterThan(0);
       expect(result.current.currentSceneIndex).toBe(0);
-      expect(result.current.connectionStatus).toBe('mock');
+
+      // Log which fetch mode was used
+      console.log(`[Test] Fetch mode: ${getCurrentFetchMode()}`);
     });
 
     it('sets initial scenes with correct data structure', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       const firstScene = result.current.scenes[0];
@@ -59,14 +66,13 @@ describe('useScenes', () => {
       const { result } = renderHook(() => useScenes());
 
       // Wait for initial load
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       // Load scene with id '2' (index 1)
       await act(async () => {
-        result.current.loadScene('2');
-        vi.advanceTimersByTime(900);
+        await result.current.loadScene('2');
       });
 
       expect(result.current.currentSceneIndex).toBe(1);
@@ -75,15 +81,19 @@ describe('useScenes', () => {
     it('handles non-existent scene gracefully', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       const originalIndex = result.current.currentSceneIndex;
 
+      // Loading non-existent scene should throw/fail
       await act(async () => {
-        result.current.loadScene('nonexistent');
-        vi.advanceTimersByTime(900);
+        try {
+          await result.current.loadScene('nonexistent');
+        } catch {
+          // Expected to fail
+        }
       });
 
       // currentSceneIndex should remain unchanged for nonexistent scene
@@ -95,18 +105,20 @@ describe('useScenes', () => {
     it('adds new scene to the list', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       const initialCount = result.current.scenes.length;
 
       await act(async () => {
-        result.current.saveScene('New Scene', 'Test notes');
-        vi.advanceTimersByTime(700);
+        await result.current.saveScene('New Scene', 'Test notes');
       });
 
-      expect(result.current.scenes.length).toBe(initialCount + 1);
+      await waitFor(() => {
+        expect(result.current.scenes.length).toBe(initialCount + 1);
+      });
+
       const newScene = result.current.scenes[result.current.scenes.length - 1];
       expect(newScene.name).toBe('New Scene');
       expect(newScene.notes).toBe('Test notes');
@@ -115,18 +127,21 @@ describe('useScenes', () => {
     it('creates scene without notes', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       await act(async () => {
-        result.current.saveScene('No Notes Scene');
-        vi.advanceTimersByTime(700);
+        await result.current.saveScene('No Notes Scene');
       });
 
-      const newScene = result.current.scenes[result.current.scenes.length - 1];
-      expect(newScene.name).toBe('No Notes Scene');
-      expect(newScene.notes).toBeUndefined();
+      await waitFor(() => {
+        expect(result.current.scenes.some(s => s.name === 'No Notes Scene')).toBe(true);
+      });
+
+      const newScene = result.current.scenes.find(s => s.name === 'No Notes Scene');
+      expect(newScene?.name).toBe('No Notes Scene');
+      expect(newScene?.notes).toBeUndefined();
     });
   });
 
@@ -134,18 +149,20 @@ describe('useScenes', () => {
     it('creates a new scene', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       const initialCount = result.current.scenes.length;
 
       await act(async () => {
-        result.current.createScene('Created Scene', undefined, 'Created notes');
-        vi.advanceTimersByTime(700);
+        await result.current.createScene('Created Scene', undefined, 'Created notes');
       });
 
-      expect(result.current.scenes.length).toBe(initialCount + 1);
+      await waitFor(() => {
+        expect(result.current.scenes.length).toBe(initialCount + 1);
+      });
+
       const newScene = result.current.scenes[result.current.scenes.length - 1];
       expect(newScene.name).toBe('Created Scene');
       expect(newScene.source).toBe('local');
@@ -154,20 +171,23 @@ describe('useScenes', () => {
     it('copies notes from source scene when copyFromId is provided', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       // Copy from scene '1' which has notes
       await act(async () => {
-        result.current.createScene('Copied Scene', '1');
-        vi.advanceTimersByTime(700);
+        await result.current.createScene('Copied Scene', '1');
       });
 
-      const newScene = result.current.scenes[result.current.scenes.length - 1];
-      expect(newScene.name).toBe('Copied Scene');
+      await waitFor(() => {
+        expect(result.current.scenes.some(s => s.name === 'Copied Scene')).toBe(true);
+      });
+
+      const newScene = result.current.scenes.find(s => s.name === 'Copied Scene');
+      expect(newScene?.name).toBe('Copied Scene');
       // Notes should be copied from source
-      expect(newScene.notes).toBeDefined();
+      expect(newScene?.notes).toBeDefined();
     });
   });
 
@@ -175,19 +195,21 @@ describe('useScenes', () => {
     it('removes scene from the list', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       const initialCount = result.current.scenes.length;
       const sceneToDelete = result.current.scenes[0];
 
       await act(async () => {
-        result.current.deleteScene(sceneToDelete.id);
-        vi.advanceTimersByTime(500);
+        await result.current.deleteScene(sceneToDelete.id);
       });
 
-      expect(result.current.scenes.length).toBe(initialCount - 1);
+      await waitFor(() => {
+        expect(result.current.scenes.length).toBe(initialCount - 1);
+      });
+
       expect(result.current.scenes.find(s => s.id === sceneToDelete.id)).toBeUndefined();
     });
   });
@@ -196,19 +218,21 @@ describe('useScenes', () => {
     it('reloads scenes', async () => {
       const { result } = renderHook(() => useScenes());
 
-      await act(async () => {
-        vi.advanceTimersByTime(600);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       const sceneCount = result.current.scenes.length;
 
       await act(async () => {
-        result.current.refreshScenes();
-        vi.advanceTimersByTime(600);
+        await result.current.refreshScenes();
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
       expect(result.current.scenes.length).toBe(sceneCount);
-      expect(result.current.isLoading).toBe(false);
     });
   });
 

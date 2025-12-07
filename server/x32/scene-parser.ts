@@ -196,15 +196,34 @@ export class SceneFileManager {
 
   /**
    * Get full file path for a scene name
+   * Includes path traversal protection
    */
   private getFilePath(filename: string): string {
     // Sanitize filename
     const sanitized = filename
       .replace(/[<>:"/\\|?*]/g, '_')  // Remove invalid chars
-      .replace(/\.+$/g, '');           // Remove trailing dots
+      .replace(/\.+$/g, '')           // Remove trailing dots
+      .replace(/\.\./g, '_');         // Prevent directory traversal
+
+    // Check for empty filename after sanitization
+    if (sanitized.length === 0) {
+      throw new Error('Invalid filename: results in empty name after sanitization');
+    }
 
     const withExtension = sanitized.endsWith('.scn') ? sanitized : `${sanitized}.scn`;
-    return path.join(this.sceneDir, withExtension);
+    const filePath = path.join(this.sceneDir, withExtension);
+
+    // Verify path is within sceneDir (defense in depth)
+    // Use path.normalize for robust cross-platform checking
+    const normalizedPath = path.normalize(path.resolve(filePath));
+    const normalizedSceneDir = path.normalize(path.resolve(this.sceneDir));
+
+    if (!normalizedPath.startsWith(normalizedSceneDir + path.sep) &&
+        normalizedPath !== normalizedSceneDir) {
+      throw new Error('Invalid filename: path traversal detected');
+    }
+
+    return filePath;
   }
 
   /**
