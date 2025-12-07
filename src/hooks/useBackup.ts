@@ -31,14 +31,23 @@ export interface FullBackupResult {
   usbCompatible: boolean;
 }
 
+export interface LoadBackupResult {
+  filename: string;
+  parameterCount: number;
+  duration: number;
+  errors: number;
+}
+
 interface UseBackupReturn {
   backups: BackupInfo[];
   isLoading: boolean;
   isCreating: boolean;
   isCreatingFull: boolean;
+  isLoadingBackup: boolean;
   error: string | null;
   createBackup: () => Promise<BackupResult>;
   createFullBackup: (sceneName?: string, notes?: string) => Promise<FullBackupResult>;
+  loadBackup: (filename: string) => Promise<LoadBackupResult>;
   fetchBackups: () => Promise<void>;
   deleteBackup: (filename: string) => Promise<void>;
   downloadBackup: (filename: string) => void;
@@ -49,6 +58,7 @@ export function useBackup(): UseBackupReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isCreatingFull, setIsCreatingFull] = useState(false);
+  const [isLoadingBackup, setIsLoadingBackup] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBackups = useCallback(async () => {
@@ -137,6 +147,34 @@ export function useBackup(): UseBackupReturn {
     }
   }, [fetchBackups]);
 
+  const loadBackup = useCallback(async (filename: string): Promise<LoadBackupResult> => {
+    setIsLoadingBackup(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/backup/${filename}/load`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load backup');
+      }
+
+      return data.data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load backup';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoadingBackup(false);
+    }
+  }, []);
+
   const deleteBackup = useCallback(async (filename: string) => {
     setIsLoading(true);
     setError(null);
@@ -177,9 +215,11 @@ export function useBackup(): UseBackupReturn {
     isLoading,
     isCreating,
     isCreatingFull,
+    isLoadingBackup,
     error,
     createBackup,
     createFullBackup,
+    loadBackup,
     fetchBackups,
     deleteBackup,
     downloadBackup,

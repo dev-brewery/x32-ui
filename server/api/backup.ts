@@ -13,6 +13,7 @@ import path from 'path';
 import { x32Connection } from '../x32/connection.js';
 import { exportSceneToScn, type ExportResult } from '../x32/scene-exporter.js';
 import { exportConsoleBackup, type ConsoleBackupResult } from '../x32/console-backup-exporter.js';
+import { loadSceneFromScn, type LoadResult } from '../x32/scene-loader.js';
 
 const router = Router();
 
@@ -536,6 +537,96 @@ router.delete('/:filename', async (req: Request, res: Response): Promise<void> =
     res.status(500).json({
       success: false,
       error: 'Failed to delete backup',
+    });
+  }
+});
+
+/**
+ * POST /api/backup/:filename/load
+ * Load a .scn backup file directly to the X32
+ * This sends all parameters from the backup file as OSC commands to restore the mixer state
+ */
+router.post('/:filename/load', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { filename } = req.params;
+
+    // Validate filename
+    const sanitizedFilename = path.basename(filename);
+    if (sanitizedFilename !== filename || !filename.endsWith('.scn')) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid filename. Only .scn files can be loaded',
+      });
+      return;
+    }
+
+    // Check connection status
+    const config = x32Connection.getConfig();
+    if (config.mockMode) {
+      res.status(503).json({
+        success: false,
+        error: 'Loading backups not available in mock mode - requires real X32 connection',
+      });
+      return;
+    }
+
+    const state = x32Connection.getState();
+    if (state !== 'connected') {
+      res.status(503).json({
+        success: false,
+        error: 'Not connected to X32',
+      });
+      return;
+    }
+
+    // Read the backup file
+    const filePath = path.join(backupDir, sanitizedFilename);
+    let content: string;
+    try {
+      content = await fs.readFile(filePath, 'utf-8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        res.status(404).json({
+          success: false,
+          error: 'Backup file not found',
+        });
+        return;
+      }
+      throw error;
+    }
+
+    console.log(`[Backup API] Loading backup: ${filename}`);
+    const startTime = Date.now();
+
+    // Load the scene to the X32
+    const result: LoadResult = await loadSceneFromScn(content, {
+      ip: config.ip,
+      port: config.port,
+      commandDelay: 5,
+      onProgress: (current, total, section) => {
+        if (current % 200 === 0) {
+          console.log(`[Backup API] Load progress: ${current}/${total} (${section})`);
+        }
+      },
+    });
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[Backup API] Backup loaded: ${result.parameterCount} parameters in ${elapsed}ms (${result.errors} errors)`);
+
+    res.json({
+      success: true,
+      data: {
+        filename,
+        parameterCount: result.parameterCount,
+        duration: result.duration,
+        errors: result.errors,
+      },
+    });
+  } catch (error) {
+    console.error('[Backup API] Error loading backup:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load backup',
     });
   }
 });

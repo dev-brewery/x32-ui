@@ -271,6 +271,11 @@ export class X32Connection extends EventEmitter {
    * Load a scene by index
    * Note: This actually changes the mixer state!
    * Uses /-action/goscene which is fire-and-forget (no response expected)
+   *
+   * IMPORTANT: The X32 scene paths (/-show/showfile/scene/NNN) use 1-based indexing
+   * matching the display (001-100), but /-action/goscene uses 0-based indexing (0-99).
+   * We store scene indices as they appear in the path (1-based), so we must subtract 1
+   * when sending the goscene command.
    */
   async loadScene(index: number): Promise<boolean> {
     if (this.config.mockMode) {
@@ -281,19 +286,22 @@ export class X32Connection extends EventEmitter {
       return success;
     }
 
-    // Validate index
-    if (index < 0 || index >= MAX_SCENES) {
-      throw new Error(`Invalid scene index: ${index}. Must be 0-${MAX_SCENES - 1}`);
+    // Validate index (1-100 for scenes, which maps to 0-99 for goscene)
+    if (index < 1 || index > MAX_SCENES) {
+      throw new Error(`Invalid scene index: ${index}. Must be 1-${MAX_SCENES}`);
     }
+
+    // Convert from 1-based scene path index to 0-based goscene index
+    const gosceneIndex = index - 1;
 
     // Use /-action/goscene which actually loads the scene
     // This is a fire-and-forget command - no response expected
     const message: OSCMessage = {
       address: X32_OSC_ADDRESSES.SCENE_GO,
-      args: [{ type: 'i', value: index }],
+      args: [{ type: 'i', value: gosceneIndex }],
     };
 
-    console.log(`[X32Connection] Loading scene ${index}`);
+    console.log(`[X32Connection] Loading scene ${index} (goscene index: ${gosceneIndex})`);
     this.sendNoWait(message);
     this.emit('sceneLoaded', index);
     return true;
