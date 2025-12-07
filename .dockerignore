@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+
+# Build outputs (will be rebuilt in Docker)
+dist
+dist-server
+
+# Development files
+.env
+.env.local
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Claude/documentation
+.claude
+*.md
+!README.md
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+coverage
+
+# Scene files (will be mounted as volume)
+scenes/*.scn

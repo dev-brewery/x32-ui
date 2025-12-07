@@ -1,0 +1,57 @@
+# X32 Scene Manager - Docker Compose Configuration
+# For Unraid deployment
+
+services:
+  x32-scene-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: x32-scene-manager
+    restart: unless-stopped
+
+    # Use host network for UDP broadcast discovery
+    # Required for auto-discovering X32 on the network
+    network_mode: host
+
+    # Alternative: Use bridge network with fixed X32 IP
+    # ports:
+    #   - "3000:3000"
+
+    environment:
+      # Server configuration
+      - PORT=3000
+
+      # X32 connection settings
+      # Set to your X32's IP address, or leave empty for auto-discovery
+      - X32_IP=${X32_IP:-}
+      - X32_PORT=${X32_PORT:-10023}
+
+      # Set to 'false' to enable real X32 communication
+      - MOCK_MODE=${MOCK_MODE:-false}
+
+      # Scene storage
+      - SCENE_DIR=/app/scenes
+
+    volumes:
+      # Persistent storage for scene files
+      - x32-scenes:/app/scenes
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volume for persistent scene storage
+volumes:
+  x32-scenes:
+    driver: local

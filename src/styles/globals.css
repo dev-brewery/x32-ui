@@ -1,0 +1,365 @@
+@import "tailwindcss";
+
+/* Solarized Dark Theme - Optimized for audio engineers in low-light environments */
+:root {
+  /* Base Colors - Solarized Dark with #073642 as primary */
+  --color-bg-primary: #073642;      /* Main background */
+  --color-bg-secondary: #002b36;    /* Darker alternative */
+  --color-surface: #0a4352;         /* Cards/elevated surfaces */
+  --color-surface-hover: #0c5264;   /* Surface hover state */
+
+  /* Text Colors */
+  --color-text: #93a1a1;            /* Primary text (base1) */
+  --color-text-emphasis: #eee8d5;   /* Emphasized/headings (base2) */
+  --color-text-secondary: #839496;  /* Secondary text (base0) */
+  --color-text-muted: #586e75;      /* Muted text (base01) */
+
+  /* Accent Colors */
+  --color-primary: #2aa198;         /* Cyan - primary actions */
+  --color-primary-dark: #1f8a88;    /* Darker cyan for hover */
+  --color-success: #859900;         /* Green */
+  --color-warning: #b58900;         /* Yellow */
+  --color-danger: #dc322f;          /* Red */
+  --color-info: #268bd2;            /* Blue */
+  --color-accent: #d33682;          /* Magenta */
+
+  /* UI Elements */
+  --color-border: #1b5c6b;          /* Border color */
+  --color-border-subtle: #0d4555;   /* Subtle borders */
+  --color-input-bg: #0a4352;        /* Input background */
+  --color-input-border: #1b5c6b;    /* Input border */
+  --color-overlay: rgba(0, 27, 38, 0.85); /* Modal overlay */
+}
+
+/* Base styles */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: var(--color-bg-primary);
+}
+
+/* Touch-friendly button styles for volunteer use */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 48px;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-bg-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.btn-success {
+  background-color: var(--color-success);
+  color: var(--color-bg-primary);
+}
+
+.btn-success:hover {
+  background-color: #6b7a00;
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c0281f;
+}
+
+.btn-secondary {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: #0e6175;
+  border-color: var(--color-primary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Card styles for scene items */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  transition: all 0.15s ease;
+}
+
+.card:hover {
+  background-color: var(--color-surface-hover);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-primary);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  max-width: 28rem;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Status indicators */
+.status-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.status-connected {
+  background-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.status-disconnected {
+  background-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.status-connecting {
+  background-color: var(--color-warning);
+  color: var(--color-warning);
+  animation: pulse 1.5s infinite;
+}
+
+.status-mock {
+  background-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease;
+  z-index: 100;
+}
+
+.toast-success {
+  background-color: var(--color-success);
+  color: var(--color-bg-primary);
+}
+
+.toast-error {
+  background-color: var(--color-danger);
+}
+
+.toast-info {
+  background-color: var(--color-info);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Input styles */
+.input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  color: var(--color-text);
+  transition: all 0.15s ease;
+  min-height: 48px;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(42, 161, 152, 0.2);
+  background-color: var(--color-surface-hover);
+}
+
+/* Select dropdown styling */
+select.input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23839496' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+select.input option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Scene grid layout */
+.scene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Loading spinner */
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Badge styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+}
+
+.badge-x32 {
+  background-color: rgba(38, 139, 210, 0.2);
+  color: var(--color-info);
+  border: 1px solid rgba(38, 139, 210, 0.3);
+}
+
+.badge-local {
+  background-color: rgba(181, 137, 0, 0.2);
+  color: var(--color-warning);
+  border: 1px solid rgba(181, 137, 0, 0.3);
+}
+
+.badge-both {
+  background-color: rgba(133, 153, 0, 0.2);
+  color: var(--color-success);
+  border: 1px solid rgba(133, 153, 0, 0.3);
+}
+
+.badge-active {
+  background-color: var(--color-primary);
+  color: var(--color-bg-primary);
+}
+
+/* Header styles */
+.header {
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Error/Alert styles */
+.alert-error {
+  background-color: rgba(220, 50, 47, 0.15);
+  border: 1px solid var(--color-danger);
+  color: #f87171;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+/* Empty state styles */
+.empty-state {
+  color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+  color: var(--color-border);
+}
+
+/* Scrollbar styling for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Selection styling */
+::selection {
+  background-color: var(--color-primary);
+  color: var(--color-bg-primary);
+}

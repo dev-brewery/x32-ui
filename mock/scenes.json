@@ -1,0 +1,59 @@
+{
+  "scenes": [
+    {
+      "id": "1",
+      "name": "Sunday Worship",
+      "index": 0,
+      "source": "both",
+      "lastModified": "2024-12-01T10:30:00Z",
+      "hasLocalBackup": true,
+      "notes": "Standard Sunday morning configuration"
+    },
+    {
+      "id": "2",
+      "name": "Youth Night",
+      "index": 1,
+      "source": "both",
+      "lastModified": "2024-11-28T18:00:00Z",
+      "hasLocalBackup": true,
+      "notes": "Louder mix, more bass for youth events"
+    },
+    {
+      "id": "3",
+      "name": "Wednesday Bible Study",
+      "index": 2,
+      "source": "local",
+      "lastModified": "2024-11-20T19:00:00Z",
+      "hasLocalBackup": true,
+      "notes": "Simple setup - pastor mic + ambient"
+    },
+    {
+      "id": "4",
+      "name": "Band Practice",
+      "index": 3,
+      "source": "x32",
+      "lastModified": "2024-11-25T14:00:00Z",
+      "hasLocalBackup": false,
+      "notes": ""
+    },
+    {
+      "id": "5",
+      "name": "Christmas Eve Service",
+      "index": 4,
+      "source": "both",
+      "lastModified": "2024-12-05T09:00:00Z",
+      "hasLocalBackup": true,
+      "notes": "Special holiday configuration with orchestra"
+    },
+    {
+      "id": "6",
+      "name": "Guest Speaker",
+      "index": 5,
+      "source": "both",
+      "lastModified": "2024-11-15T11:00:00Z",
+      "hasLocalBackup": true,
+      "notes": "Minimal setup for visiting speakers"
+    }
+  ],
+  "currentSceneIndex": 0
+}

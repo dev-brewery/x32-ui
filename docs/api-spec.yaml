@@ -1,0 +1,641 @@
+openapi: 3.0.3
+info:
+  title: X32 Scene Manager API
+  version: 1.0.0
+  description: |
+    REST API for managing Behringer X32 mixer scenes with local backup support.
+
+    **Features:**
+    - Manage X32 internal scenes (100 slots)
+    - Create local .scn file backups
+    - Load scenes to X32 mixer
+    - Real-time updates via WebSocket
+
+    **Base URL:** `http://localhost:3000`
+  contact:
+    name: X32 Scene Manager
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: http://{host}:3000
+    description: Production deployment
+    variables:
+      host:
+        default: localhost
+        description: Server hostname or IP
+
+tags:
+  - name: Scenes
+    description: Scene management operations
+  - name: X32
+    description: X32 mixer information
+  - name: Health
+    description: System health and status
+
+paths:
+  # ============================================================================
+  # Scene Management Endpoints
+  # ============================================================================
+
+  /api/scenes:
+    get:
+      summary: List all scenes
+      description: |
+        Retrieves all scenes from both X32 internal memory and local storage.
+        Scenes are merged, with local backups indicated by `hasLocalBackup` flag.
+      operationId: listScenes
+      tags:
+        - Scenes
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - scenes
+                      - currentSceneIndex
+                      - connectionStatus
+                    properties:
+                      scenes:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Scene'
+                      currentSceneIndex:
+                        type: integer
+                        nullable: true
+                        description: Index of currently loaded scene on X32
+                        example: 0
+                      connectionStatus:
+                        $ref: '#/components/schemas/ConnectionStatus'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new scene
+      description: |
+        Creates a new scene and saves it to local storage as a .scn file.
+        Optionally copy settings from an existing scene.
+      operationId: createScene
+      tags:
+        - Scenes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: Scene name
+                  example: "Sunday Worship"
+                notes:
+                  type: string
+                  maxLength: 512
+                  description: Optional notes about the scene
+                  example: "Standard Sunday morning configuration"
+                copyFromId:
+                  type: string
+                  description: ID of scene to copy from (optional)
+                  example: "x32-0"
+      responses:
+        '201':
+          description: Scene created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Scene'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/scenes/{id}:
+    get:
+      summary: Get a single scene
+      description: Retrieves details for a specific scene by ID
+      operationId: getScene
+      tags:
+        - Scenes
+      parameters:
+        - $ref: '#/components/parameters/SceneId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Scene'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update a scene
+      description: |
+        Updates scene metadata (name and notes).
+        Note: Cannot directly modify X32 internal scenes, only local backups.
+      operationId: updateScene
+      tags:
+        - Scenes
+      parameters:
+        - $ref: '#/components/parameters/SceneId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: Updated scene name
+                  example: "Sunday Worship (Updated)"
+                notes:
+                  type: string
+                  maxLength: 512
+                  description: Updated notes
+                  example: "Updated configuration with new mics"
+      responses:
+        '200':
+          description: Scene updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Scene'
+        '400':
+          description: Cannot modify X32 internal scenes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Cannot directly modify X32 internal scenes"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete a scene
+      description: |
+        Deletes a scene. For X32 scenes, only the local backup is deleted.
+        For local-only scenes, the .scn file is removed from storage.
+      operationId: deleteScene
+      tags:
+        - Scenes
+      parameters:
+        - $ref: '#/components/parameters/SceneId'
+      responses:
+        '200':
+          description: Scene deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - deleted
+                    properties:
+                      deleted:
+                        type: boolean
+                        example: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/scenes/{id}/load:
+    post:
+      summary: Load a scene to X32
+      description: |
+        Loads the specified scene to the X32 mixer. This changes the active
+        mixer configuration. WebSocket clients will receive a `scene_loaded` event.
+      operationId: loadScene
+      tags:
+        - Scenes
+      parameters:
+        - $ref: '#/components/parameters/SceneId'
+      responses:
+        '200':
+          description: Scene loaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - loaded
+                    properties:
+                      loaded:
+                        type: boolean
+                        example: true
+        '400':
+          description: Failed to load scene
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Failed to load scene"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/scenes/{id}/backup:
+    post:
+      summary: Backup a scene to local storage
+      description: |
+        Creates a local .scn file backup of the specified scene.
+        Useful for creating offline copies of X32 internal scenes.
+      operationId: backupScene
+      tags:
+        - Scenes
+      parameters:
+        - $ref: '#/components/parameters/SceneId'
+      responses:
+        '200':
+          description: Scene backed up successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - backed
+                    properties:
+                      backed:
+                        type: boolean
+                        example: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # X32 Information Endpoints
+  # ============================================================================
+
+  /api/x32/info:
+    get:
+      summary: Get X32 mixer information
+      description: |
+        Retrieves information about the connected X32 mixer including
+        model, firmware version, and network configuration.
+      operationId: getX32Info
+      tags:
+        - X32
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/X32Info'
+        '500':
+          description: X32 not connected or communication error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Failed to get X32 info"
+
+  # ============================================================================
+  # Health Check Endpoint
+  # ============================================================================
+
+  /api/health:
+    get:
+      summary: Health check
+      description: |
+        Returns server health status and X32 connection information.
+        Used for Docker health checks and monitoring.
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - x32Connection
+                  - mockMode
+                  - timestamp
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded]
+                    example: "ok"
+                  x32Connection:
+                    $ref: '#/components/schemas/ConnectionStatus'
+                  mockMode:
+                    type: boolean
+                    description: Whether running in mock mode (no real X32)
+                    example: false
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Current server time
+                    example: "2025-12-07T10:30:00Z"
+
+# ==============================================================================
+# WebSocket Events (Documented for Reference)
+# ==============================================================================
+
+# WebSocket endpoint: ws://localhost:3000/ws
+#
+# Client -> Server Messages:
+# {
+#   "type": "ping",
+#   "payload": null
+# }
+# {
+#   "type": "get_status",
+#   "payload": null
+# }
+#
+# Server -> Client Messages:
+# {
+#   "type": "connection_status",
+#   "payload": {
+#     "status": "connected",
+#     "isMockMode": false
+#   },
+#   "timestamp": "2025-12-07T10:30:00Z"
+# }
+# {
+#   "type": "scene_loaded",
+#   "payload": {
+#     "sceneIndex": 5
+#   },
+#   "timestamp": "2025-12-07T10:30:00Z"
+# }
+# {
+#   "type": "scene_list_updated",
+#   "payload": null,
+#   "timestamp": "2025-12-07T10:30:00Z"
+# }
+# {
+#   "type": "error",
+#   "payload": {
+#     "message": "Connection lost"
+#   },
+#   "timestamp": "2025-12-07T10:30:00Z"
+# }
+
+# ==============================================================================
+# Components
+# ==============================================================================
+
+components:
+  parameters:
+    SceneId:
+      name: id
+      in: path
+      required: true
+      description: |
+        Scene identifier. Format depends on source:
+        - X32 scenes: `x32-{index}` (e.g., "x32-0", "x32-5")
+        - Local scenes: `local-{name}` (e.g., "local-Sunday Worship")
+      schema:
+        type: string
+        pattern: '^(x32-\d+|local-.+)$'
+        example: "x32-0"
+
+  schemas:
+    Scene:
+      type: object
+      required:
+        - id
+        - name
+        - index
+        - source
+        - lastModified
+        - hasLocalBackup
+      properties:
+        id:
+          type: string
+          description: Unique scene identifier
+          example: "x32-0"
+        name:
+          type: string
+          description: Display name of the scene
+          example: "Sunday Worship"
+        index:
+          type: integer
+          description: X32 scene slot index (0-99)
+          minimum: 0
+          maximum: 99
+          example: 0
+        source:
+          type: string
+          enum: [x32, local, both]
+          description: |
+            Where the scene is stored:
+            - `x32`: Only in X32 internal memory
+            - `local`: Only in local .scn file
+            - `both`: Exists in X32 and has local backup
+          example: "both"
+        lastModified:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+          example: "2025-12-01T10:30:00Z"
+        hasLocalBackup:
+          type: boolean
+          description: Whether a local .scn backup file exists
+          example: true
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes about the scene
+          example: "Standard Sunday morning configuration"
+
+    X32Info:
+      type: object
+      required:
+        - ip
+        - name
+        - model
+        - firmware
+      properties:
+        ip:
+          type: string
+          format: ipv4
+          description: X32 IP address
+          example: "192.168.0.64"
+        name:
+          type: string
+          description: Console name
+          example: "X32-MAIN"
+        model:
+          type: string
+          description: Console model
+          enum: [X32, X32 Compact, X32 Rack, X32 Producer, M32, M32R, M32C]
+          example: "X32"
+        firmware:
+          type: string
+          description: Firmware version
+          pattern: '^\d+\.\d+$'
+          example: "4.06"
+
+    ConnectionStatus:
+      type: string
+      enum: [connected, disconnected, connecting, mock]
+      description: |
+        X32 connection state:
+        - `connected`: Successfully connected to X32
+        - `disconnected`: Not connected
+        - `connecting`: Connection in progress
+        - `mock`: Running in mock mode (no real X32)
+      example: "connected"
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Scene not found"
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Scene name is required"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Scene not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Failed to list scenes"
+
+# ==============================================================================
+# Security Schemes (Future Enhancement)
+# ==============================================================================
+
+# Currently, the API has no authentication. For production deployments
+# exposed to the internet, consider adding:
+#
+# components:
+#   securitySchemes:
+#     bearerAuth:
+#       type: http
+#       scheme: bearer
+#       bearerFormat: JWT
+#
+# security:
+#   - bearerAuth: []

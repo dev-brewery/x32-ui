@@ -1,0 +1,57 @@
+name: Branch Naming Convention
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+      - develop
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch-name:
+    name: Check Branch Name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch naming convention
+        run: |
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          echo "Checking branch name: $BRANCH_NAME"
+
+          # Valid patterns:
+          # feature/description or feature/TICKET-123-description
+          # bugfix/description or bugfix/TICKET-123-description
+          # hotfix/description or hotfix/TICKET-123-description
+          # release/v1.0.0
+          # chore/description
+          # docs/description
+          # refactor/description
+          # test/description
+
+          VALID_PATTERN="^(feature|bugfix|hotfix|release|chore|docs|refactor|test)\/[a-z0-9._-]+$"
+
+          if [[ ! "$BRANCH_NAME" =~ $VALID_PATTERN ]]; then
+            echo "::error::Invalid branch name: $BRANCH_NAME"
+            echo ""
+            echo "Branch names must follow the pattern: <type>/<description>"
+            echo ""
+            echo "Valid types:"
+            echo "  - feature/  : New features"
+            echo "  - bugfix/   : Bug fixes"
+            echo "  - hotfix/   : Urgent production fixes"
+            echo "  - release/  : Release branches (e.g., release/v1.0.0)"
+            echo "  - chore/    : Maintenance tasks"
+            echo "  - docs/     : Documentation changes"
+            echo "  - refactor/ : Code refactoring"
+            echo "  - test/     : Test additions/changes"
+            echo ""
+            echo "Description must be lowercase with hyphens, dots, or underscores."
+            echo "Examples:"
+            echo "  - feature/user-authentication"
+            echo "  - bugfix/login-redirect-loop"
+            echo "  - feature/PROJ-123-add-dashboard"
+            exit 1
+          fi
+
+          echo "✅ Branch name is valid: $BRANCH_NAME"

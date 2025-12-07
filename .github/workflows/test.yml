@@ -1,0 +1,81 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run tests
+        run: |
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "No test script found, skipping..."
+          fi
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: matrix.node-version == 20
+        with:
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  test-coverage:
+    name: Coverage Check
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run coverage
+        run: |
+          if [ -f "package.json" ] && grep -q '"test:coverage"' package.json; then
+            npm run test:coverage
+          elif [ -f "package.json" ] && grep -q '"test"' package.json; then
+            npm test -- --coverage || echo "Coverage not supported"
+          else
+            echo "No test script found, skipping..."
+          fi
+
+      - name: Check coverage threshold
+        run: |
+          if [ -f "coverage/coverage-summary.json" ]; then
+            COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+            THRESHOLD=70
+            echo "Line coverage: $COVERAGE%"
+            if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+              echo "::warning::Coverage ($COVERAGE%) is below threshold ($THRESHOLD%)"
+            fi
+          fi
+        continue-on-error: true

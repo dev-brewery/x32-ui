@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-server/
+
+# Environment files (keep .example)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Playwright
+playwright-report/
+e2e-results/
+e2e-results.json
+test-results/
+blob-report/
+playwright/.cache/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Scene files (backed up separately)
+scenes/*.scn
+
+# Temporary files
+*.tmp
+*.temp

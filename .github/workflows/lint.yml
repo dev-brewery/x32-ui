@@ -1,0 +1,113 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  lint-js-ts:
+    name: Lint JavaScript/TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Run ESLint
+        run: |
+          if [ -f "package.json" ] && grep -q "eslint" package.json; then
+            npm run lint || npx eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0
+          else
+            echo "ESLint not configured, skipping..."
+          fi
+
+      - name: Run Prettier check
+        run: |
+          if [ -f "package.json" ] && grep -q "prettier" package.json; then
+            npm run format:check || npx prettier --check "**/*.{js,jsx,ts,tsx,json,md,yml,yaml}"
+          else
+            echo "Prettier not configured, skipping..."
+          fi
+
+  lint-styles:
+    name: Lint Styles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Run Stylelint
+        run: |
+          if [ -f "package.json" ] && grep -q "stylelint" package.json; then
+            npm run lint:styles || npx stylelint "**/*.{css,scss,sass,less}"
+          else
+            echo "Stylelint not configured, skipping..."
+          fi
+
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: '**/*.md'
+          config: |
+            {
+              "default": true,
+              "MD013": false,
+              "MD033": false,
+              "MD041": false
+            }
+        continue-on-error: true
+
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Run TypeScript compiler
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npm run typecheck || npx tsc --noEmit
+          else
+            echo "TypeScript not configured, skipping..."
+          fi

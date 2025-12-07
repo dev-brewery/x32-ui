@@ -1,0 +1,104 @@
+# X32 Scene Manager - Unraid Docker Compose Stack
+# ================================================
+# Optimized for Unraid's Docker Compose Manager plugin
+#
+# SETUP:
+# 1. Copy this file to: /boot/config/plugins/compose.manager/projects/x32-scene-manager/compose.yaml
+# 2. Create directories: mkdir -p /mnt/user/appdata/x32-scene-manager/{scenes,backups}
+# 3. In Unraid: Docker → Compose → Add New Stack → paste this content
+# 4. Click "Compose Up"
+# 5. Access: http://YOUR_UNRAID_IP:3000
+#
+# For detailed instructions, see: docs/unraid-deployment.md
+
+services:
+  x32-scene-manager:
+    # Option A: Build from local source (uncomment if you cloned the repo)
+    # build:
+    #   context: /mnt/user/appdata/x32-scene-manager/source
+    #   dockerfile: Dockerfile
+
+    # Option B: Use pre-built image (update with your registry)
+    image: ghcr.io/x32-scene-manager/x32-ui:latest
+
+    container_name: x32-scene-manager
+    restart: unless-stopped
+
+    # ============================================
+    # NETWORK MODE
+    # ============================================
+    # Host mode is REQUIRED for X32 auto-discovery
+    # The X32 uses UDP broadcast on port 10023 which doesn't work in bridge mode
+    network_mode: host
+
+    # Alternative: Bridge mode (only if you know your X32's IP)
+    # Uncomment these and remove network_mode: host above
+    # ports:
+    #   - "3000:3000"
+
+    # ============================================
+    # ENVIRONMENT VARIABLES
+    # ============================================
+    environment:
+      # Web server port
+      - PORT=3000
+
+      # X32 Connection Settings
+      # -----------------------
+      # Leave X32_IP empty for auto-discovery (recommended with host network)
+      # Or set to your X32's IP address (required for bridge network)
+      - X32_IP=${X32_IP:-}
+
+      # X32 OSC port (default 10023, rarely needs changing)
+      - X32_PORT=${X32_PORT:-10023}
+
+      # Set to 'true' to run without a real X32 (demo/testing mode)
+      - MOCK_MODE=${MOCK_MODE:-false}
+
+      # Internal storage paths (don't change unless you modify volumes)
+      - SCENE_DIR=/app/scenes
+      - BACKUP_DIR=/app/backups
+
+      # Node.js production mode
+      - NODE_ENV=production
+
+    # ============================================
+    # VOLUME MOUNTS
+    # ============================================
+    volumes:
+      # Scene files - stored on Unraid appdata share
+      - /mnt/user/appdata/x32-scene-manager/scenes:/app/scenes
+
+      # Backup files - full X32 configuration backups
+      - /mnt/user/appdata/x32-scene-manager/backups:/app/backups
+
+      # Optional: Mount USB drive for direct backup storage
+      # - /mnt/disks/YOUR_USB_DRIVE/X32_Backups:/app/backups
+
+    # ============================================
+    # HEALTH CHECK
+    # ============================================
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # ============================================
+    # LOGGING
+    # ============================================
+    # Limit log file size to prevent disk fill-up
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # ============================================
+    # LABELS (for Unraid UI organization)
+    # ============================================
+    labels:
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/x32-scene-manager/x32-ui/main/docs/images/icon.png"
+      - "net.unraid.docker.webui=http://[IP]:[PORT:3000]"
+      - "net.unraid.docker.managed=compose"

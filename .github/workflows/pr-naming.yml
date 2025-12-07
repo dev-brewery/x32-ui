@@ -1,0 +1,77 @@
+name: PR Title Convention
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  check-pr-title:
+    name: Check PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title follows conventional commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "Checking PR title: $PR_TITLE"
+
+          # Conventional commit pattern:
+          # type(scope): description
+          # type: description
+          # type!: description (breaking change)
+          #
+          # Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+
+          VALID_PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: .{1,100}$"
+
+          if [[ ! "$PR_TITLE" =~ $VALID_PATTERN ]]; then
+            echo "::error::Invalid PR title: $PR_TITLE"
+            echo ""
+            echo "PR titles must follow Conventional Commits format:"
+            echo "  <type>(<scope>): <description>"
+            echo ""
+            echo "Valid types:"
+            echo "  - feat:     A new feature"
+            echo "  - fix:      A bug fix"
+            echo "  - docs:     Documentation only changes"
+            echo "  - style:    Code style changes (formatting, semicolons, etc)"
+            echo "  - refactor: Code change that neither fixes a bug nor adds a feature"
+            echo "  - perf:     Performance improvement"
+            echo "  - test:     Adding or modifying tests"
+            echo "  - build:    Changes to build system or dependencies"
+            echo "  - ci:       Changes to CI configuration"
+            echo "  - chore:    Other changes that don't modify src or test files"
+            echo "  - revert:   Reverts a previous commit"
+            echo ""
+            echo "Scope is optional and should be lowercase."
+            echo "Add ! before : for breaking changes."
+            echo ""
+            echo "Examples:"
+            echo "  - feat: add user authentication"
+            echo "  - fix(auth): resolve login redirect loop"
+            echo "  - feat(api)!: change response format"
+            echo "  - docs: update README with setup instructions"
+            exit 1
+          fi
+
+          echo "✅ PR title is valid: $PR_TITLE"
+
+  check-pr-body:
+    name: Check PR Description
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR has description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [ -z "$PR_BODY" ] || [ ${#PR_BODY} -lt 20 ]; then
+            echo "::error::PR description is too short or empty"
+            echo ""
+            echo "Please provide a meaningful description that includes:"
+            echo "  - What changes were made"
+            echo "  - Why the changes were needed"
+            echo "  - How to test the changes"
+            exit 1
+          fi
+
+          echo "✅ PR has a description"

@@ -1,0 +1,62 @@
+{
+  "timestamp": "2025-12-07T18:00:06.213Z",
+  "filename": "X32-05-2D-A9_2025-12-07T18-00-06.json",
+  "consoleName": "X32-05-2D-A9",
+  "consoleModel": "X32",
+  "consoleIp": "192.168.1.96",
+  "firmware": "4.06",
+  "scenesBackedUp": 10,
+  "currentSceneIndex": -1,
+  "scenes": [
+    {
+      "index": 1,
+      "name": "use this scene",
+      "notes": "Master"
+    },
+    {
+      "index": 2,
+      "name": "Ndcs",
+      "notes": ""
+    },
+    {
+      "index": 3,
+      "name": "Class",
+      "notes": ""
+    },
+    {
+      "index": 5,
+      "name": "Temp",
+      "notes": ""
+    },
+    {
+      "index": 6,
+      "name": "Ivan-temp",
+      "notes": ""
+    },
+    {
+      "index": 9,
+      "name": "Todd",
+      "notes": ""
+    },
+    {
+      "index": 10,
+      "name": "Todd ss",
+      "notes": ""
+    },
+    {
+      "index": 34,
+      "name": "backup",
+      "notes": ""
+    },
+    {
+      "index": 96,
+      "name": "xtra backup",
+      "notes": "Master"
+    },
+    {
+      "index": 99,
+      "name": "Do not overwrite",
+      "notes": ""
+    }
+  ]
+}

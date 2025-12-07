@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      has-changes: ${{ steps.changes.outputs.src }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for source changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'lib/**'
+              - 'app/**'
+              - 'pages/**'
+              - 'components/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.json'
+
+  lint:
+    name: Lint
+    needs: setup
+    if: needs.setup.outputs.has-changes == 'true' || github.event_name == 'push'
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    name: Test
+    needs: [setup, lint]
+    if: needs.setup.outputs.has-changes == 'true' || github.event_name == 'push'
+    uses: ./.github/workflows/test.yml
+
+  e2e:
+    name: E2E Tests
+    needs: [setup, lint, test]
+    if: needs.setup.outputs.has-changes == 'true' || github.event_name == 'push'
+    uses: ./.github/workflows/e2e.yml
+
+  build:
+    name: Build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build
+        run: |
+          if [ -f "package.json" ] && grep -q '"build"' package.json; then
+            npm run build
+          else
+            echo "No build script found, skipping..."
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: build-${{ github.sha }}
+          path: |
+            dist/
+            build/
+            .next/
+          retention-days: 7
+        continue-on-error: true
+
+  status-check:
+    name: Status Check
+    needs: [lint, test, e2e, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs status
+        run: |
+          if [ "${{ needs.lint.result }}" == "failure" ] || \
+             [ "${{ needs.test.result }}" == "failure" ] || \
+             [ "${{ needs.e2e.result }}" == "failure" ] || \
+             [ "${{ needs.build.result }}" == "failure" ]; then
+            echo "::error::One or more required jobs failed"
+            exit 1
+          fi
+          echo "✅ All checks passed"

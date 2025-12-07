@@ -1,0 +1,18 @@
+{
+  "projectName": "x32-ui",
+  "blockedFeatures": [],
+  "deferredItems": [
+    {
+      "id": "DEFER-001",
+      "title": "Live X32 integration",
+      "reason": "Requires hardware testing - deferred to Phase 2",
+      "priority": "high"
+    },
+    {
+      "id": "DEFER-002",
+      "title": "X32 auto-discovery",
+      "reason": "Requires network broadcast - deferred to Phase 2",
+      "priority": "medium"
+    }
+  ]
+}

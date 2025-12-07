@@ -1,0 +1,32 @@
+{
+  "projectName": "x32-ui",
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "date": "2024-12-07",
+      "phase": "PLAN",
+      "title": "Use osc.js for OSC communication",
+      "rationale": "Well-maintained library with WebSocket + UDP support",
+      "alternatives": ["x32-proxy", "osc-js", "node-osc"],
+      "status": "approved"
+    },
+    {
+      "id": "DEC-002",
+      "date": "2024-12-07",
+      "phase": "PLAN",
+      "title": "Mock mode for development",
+      "rationale": "No live X32 communication during development for safety",
+      "alternatives": [],
+      "status": "approved"
+    },
+    {
+      "id": "DEC-003",
+      "date": "2024-12-07",
+      "phase": "PLAN",
+      "title": "Scene-only UI",
+      "rationale": "Keep UI simple for volunteer training - no mixing controls",
+      "alternatives": ["Full mixer UI", "Scenes + fader overview"],
+      "status": "approved"
+    }
+  ]
+}

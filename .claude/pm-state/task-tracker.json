@@ -1,0 +1,54 @@
+{
+  "projectName": "x32-ui",
+  "tasks": [
+    {
+      "id": "PLAN-001",
+      "phase": "PLAN",
+      "title": "Document requirements",
+      "status": "pending",
+      "assignee": "architect"
+    },
+    {
+      "id": "DESIGN-001",
+      "phase": "DESIGN",
+      "title": "Verify architecture documentation",
+      "status": "pending",
+      "assignee": "architect"
+    },
+    {
+      "id": "IMPL-001",
+      "phase": "IMPLEMENT",
+      "title": "Verify frontend implementation",
+      "status": "pending",
+      "assignee": "developer"
+    },
+    {
+      "id": "IMPL-002",
+      "phase": "IMPLEMENT",
+      "title": "Verify backend implementation",
+      "status": "pending",
+      "assignee": "developer"
+    },
+    {
+      "id": "TEST-001",
+      "phase": "TEST",
+      "title": "Write unit tests",
+      "status": "pending",
+      "assignee": "tester"
+    },
+    {
+      "id": "REVIEW-001",
+      "phase": "REVIEW",
+      "title": "Code quality review",
+      "status": "pending",
+      "assignee": "reviewer"
+    },
+    {
+      "id": "DEPLOY-001",
+      "phase": "DEPLOY",
+      "title": "Build and test Docker container",
+      "status": "pending",
+      "assignee": "devops"
+    }
+  ]
+}
